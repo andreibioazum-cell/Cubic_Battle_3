@@ -2,15 +2,11 @@ local settings = {}
 
 local fontTitle, fontBtn
 local btnBack = { w = 140, h = 55, x = 0, y = 30 }
-local btnMusic = { w = 220, h = 75, x = 0, y = 0 }
-local btnSfx   = { w = 220, h = 75, x = 0, y = 0 }
-
-local isMobile = (love.system.getOS() == "Android" or love.system.getOS() == "iOS")
+local btnSfx = { w = 220, h = 75, x = 0, y = 0 }
 
 local function getScale()
     local w, h = love.graphics.getDimensions()
-    local base = 1000        -- можно поменять на 1000 для ПК
-    if isMobile then base = 600 end
+    local base = 600
     return math.min(w, h) / base
 end
 
@@ -40,16 +36,10 @@ function settings.load()
     btnBack.x = (w - btnBack.w) / 2
     btnBack.y = h - 80 * scale
 
-    btnMusic.w = 220 * scale
-    btnMusic.h = 75 * scale
     btnSfx.w = 220 * scale
     btnSfx.h = 75 * scale
-
-    btnMusic.x = (w - btnMusic.w) / 2
-    btnMusic.y = h/2 - 100 * scale
-
     btnSfx.x = (w - btnSfx.w) / 2
-    btnSfx.y = h/2 + 40 * scale
+    btnSfx.y = h/2 - 30 * scale
 
     local titleSize = math.max(32, 48 * scale)
     local btnSize   = math.max(20, 28 * scale)
@@ -69,18 +59,6 @@ function settings.draw()
     local scale = getScale()
 
     drawSpacedText("SETTINGS", 0, 80*scale, w, "center", fontTitle, nil, 1)
-
-    -- Кнопка Music
-    local musicText = musicOn and "MUSIC: ON" or "MUSIC: OFF"
-    local musicColor = musicOn and {0.35, 0.15, 0.75} or {0.5, 0.5, 0.5}
-    love.graphics.setColor(0.1, 0.0, 0.2, 0.5)
-    love.graphics.rectangle("fill", btnMusic.x + 5*scale, btnMusic.y + 6*scale, btnMusic.w, btnMusic.h, 16*scale, 16*scale)
-    love.graphics.setColor(musicColor[1], musicColor[2], musicColor[3], 1)
-    love.graphics.rectangle("fill", btnMusic.x, btnMusic.y, btnMusic.w, btnMusic.h, 16*scale, 16*scale)
-    love.graphics.setColor(0, 0, 0, 1)
-    love.graphics.setLineWidth(3.4 * scale)
-    love.graphics.rectangle("line", btnMusic.x, btnMusic.y, btnMusic.w, btnMusic.h, 16*scale, 16*scale)
-    drawSpacedText(musicText, btnMusic.x, btnMusic.y + 22*scale, btnMusic.w, "center", fontBtn, nil, 1)
 
     -- Кнопка Sound Effects
     local sfxText = sfxOn and "SOUNDS: ON" or "SOUNDS: OFF"
@@ -109,13 +87,6 @@ function settings.touchpressed(id, x, y)
     if x >= btnBack.x and x <= btnBack.x + btnBack.w and y >= btnBack.y and y <= btnBack.y + btnBack.h then
         playButtonSound()
         GameState.current = "lobby"
-        return
-    end
-
-    if x >= btnMusic.x and x <= btnMusic.x + btnMusic.w and y >= btnMusic.y and y <= btnMusic.y + btnMusic.h then
-        playButtonSound()
-        toggleMusic()
-        SAVE_SAVE()
         return
     end
 
