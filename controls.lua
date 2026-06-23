@@ -6,28 +6,20 @@ local atk  = { id = nil, x = 0, y = 0, r = 52, hold = false, press = 0 }
 local back = { x = 20, y = 20, w = 140, h = 55 }
 local ability = { id = nil, x = 0, y = 0, r = 40, press = 0, triggered = false }
 
--- ========== КЛАВИАТУРА ==========
-local keys = { w = false, a = false, s = false, d = false, space = false, e = false }
 local font
 local aimDx, aimDy = 0, -1
-local isMobile = (love.system.getOS() == "Android" or love.system.getOS() == "iOS")
-local spaceJustPressed = false
-local abilityJustPressed = false
 
 -- ========== ФЛАГ ДОСТУПНОСТИ СПОСОБНОСТИ ==========
 local abilityAvailable = false
 
--- ========== НОРМАЛЬНЫЙ РАСЧЕТ МАСШТАБА ==========
+-- ========== МАСШТАБ ==========
 local function getScale()
     local w, h = love.graphics.getDimensions()
-    local base = 1000        -- для ПК теперь 500
-    if isMobile then
-        base = 600
-    end
+    local base = 600
     return math.min(w, h) / base
 end
 
--- ========== ОТРИСОВКА ТЕКСТА С ТЕНЬЮ ==========
+-- ========== ТЕКСТ С ТЕНЬЮ ==========
 local function drawSpacedText(text, x, y, w, align, font, spacing, alpha)
     alpha = alpha or 1
     love.graphics.setFont(font)
@@ -45,7 +37,7 @@ local function drawSpacedText(text, x, y, w, align, font, spacing, alpha)
     love.graphics.print(text, startX, y)
 end
 
--- ========== РАЗМЕЩЕНИЕ ЭЛЕМЕНТОВ (АДАПТИВНО) ==========
+-- ========== РАЗМЕЩЕНИЕ ЭЛЕМЕНТОВ ==========
 local function place()
     local w, h = love.graphics.getDimensions()
     local scale = getScale()
@@ -95,19 +87,13 @@ end
 -- ========== УПРАВЛЕНИЕ ДВИЖЕНИЕМ ==========
 function controls.getMove()
     local dx, dy = 0, 0
-    if keys.w then dy = dy - 1 end
-    if keys.s then dy = dy + 1 end
-    if keys.a then dx = dx - 1 end
-    if keys.d then dx = dx + 1 end
 
     if joy.id then
         local jdx, jdy = joy.sx - joy.cx, joy.sy - joy.cy
         local len = math.sqrt(jdx * jdx + jdy * jdy)
         if len > 0 then
-            if dx == 0 and dy == 0 then
-                dx, dy = jdx / len, jdy / len
-                aimDx, aimDy = dx, dy
-            end
+            dx, dy = jdx / len, jdy / len
+            aimDx, aimDy = dx, dy
         end
     end
 
@@ -121,7 +107,7 @@ function controls.getMove()
     return dx, dy
 end
 
-function controls.isAiming() return atk.hold or keys.space end
+function controls.isAiming() return atk.hold end
 function controls.getAim() return aimDx, aimDy end
 
 function controls.setAbilityAvailable(available)
@@ -182,38 +168,8 @@ function controls.touchreleased(id)
     return false, aimDx, aimDy
 end
 
--- ========== КЛАВИАТУРА ==========
-function controls.keypressed(key)
-    if key == "w" then keys.w = true end
-    if key == "a" then keys.a = true end
-    if key == "s" then keys.s = true end
-    if key == "d" then keys.d = true end
-    if key == "space" then keys.space = true; spaceJustPressed = true end
-    if key == "e" then keys.e = true; abilityJustPressed = true end
-end
-
-function controls.keyreleased(key)
-    if key == "w" then keys.w = false end
-    if key == "a" then keys.a = false end
-    if key == "s" then keys.s = false end
-    if key == "d" then keys.d = false end
-    if key == "space" then keys.space = false end
-    if key == "e" then keys.e = false end
-end
-
-function controls.getShot()
-    if spaceJustPressed then
-        spaceJustPressed = false
-        return true, aimDx, aimDy
-    end
-    return false, aimDx, aimDy
-end
-
+-- ========== ДЛЯ ИГРЫ ==========
 function controls.getAbilityTrigger()
-    if abilityJustPressed then
-        abilityJustPressed = false
-        return true
-    end
     if ability.triggered then
         ability.triggered = false
         return true
@@ -226,51 +182,49 @@ function controls.draw()
     local w, h = love.graphics.getDimensions()
     local scale = getScale()
 
-    if isMobile then
-        love.graphics.setLineWidth(2.8 * scale)
+    love.graphics.setLineWidth(2.8 * scale)
 
-        -- Джойстик
-        love.graphics.setColor(0, 0, 0, 0.25)
-        love.graphics.circle("fill", joy.cx, joy.cy, joy.r)
-        love.graphics.setColor(0, 0, 0, 1)
-        love.graphics.circle("line", joy.cx, joy.cy, joy.r)
-        love.graphics.circle("fill", joy.sx, joy.sy, joy.sr)
+    -- Джойстик
+    love.graphics.setColor(0, 0, 0, 0.25)
+    love.graphics.circle("fill", joy.cx, joy.cy, joy.r)
+    love.graphics.setColor(0, 0, 0, 1)
+    love.graphics.circle("line", joy.cx, joy.cy, joy.r)
+    love.graphics.circle("fill", joy.sx, joy.sy, joy.sr)
 
-        -- Кнопка Shot
-        local press = atk.press
-        local r = atk.r * (1 - press * 0.12)
-        local textScale = 1 - press * 0.18
-        local textAlpha = 1 - press * 0.45
+    -- Кнопка Shot
+    local press = atk.press
+    local r = atk.r * (1 - press * 0.12)
+    local textScale = 1 - press * 0.18
+    local textAlpha = 1 - press * 0.45
 
-        love.graphics.setColor(0.55 - press * 0.2, 0.20, 0.85 - press * 0.3, 1)
-        love.graphics.circle("fill", atk.x, atk.y, r)
+    love.graphics.setColor(0.55 - press * 0.2, 0.20, 0.85 - press * 0.3, 1)
+    love.graphics.circle("fill", atk.x, atk.y, r)
+    love.graphics.setColor(0, 0, 0, 1)
+    love.graphics.setLineWidth(3.8 * scale)
+    love.graphics.circle("line", atk.x, atk.y, r)
+
+    love.graphics.push()
+    love.graphics.translate(atk.x, atk.y)
+    love.graphics.scale(textScale, textScale)
+    drawSpacedText("Shot", -atk.r, -16 * scale, atk.r * 2, "center", font, nil, textAlpha)
+    love.graphics.pop()
+
+    -- Кнопка способности
+    if abilityAvailable then
+        local abPress = ability.press
+        local abR = ability.r * (1 - abPress * 0.12)
+        love.graphics.setColor(0.8, 0.2, 0.9, 1)
+        love.graphics.circle("fill", ability.x, ability.y, abR)
         love.graphics.setColor(0, 0, 0, 1)
         love.graphics.setLineWidth(3.8 * scale)
-        love.graphics.circle("line", atk.x, atk.y, r)
+        love.graphics.circle("line", ability.x, ability.y, abR)
 
-        love.graphics.push()
-        love.graphics.translate(atk.x, atk.y)
-        love.graphics.scale(textScale, textScale)
-        drawSpacedText("Shot", -atk.r, -16 * scale, atk.r * 2, "center", font, nil, textAlpha)
-        love.graphics.pop()
-
-        -- Кнопка способности
-        if abilityAvailable then
-            local abPress = ability.press
-            local abR = ability.r * (1 - abPress * 0.12)
-            love.graphics.setColor(0.8, 0.2, 0.9, 1)
-            love.graphics.circle("fill", ability.x, ability.y, abR)
-            love.graphics.setColor(0, 0, 0, 1)
-            love.graphics.setLineWidth(3.8 * scale)
-            love.graphics.circle("line", ability.x, ability.y, abR)
-
-            love.graphics.setFont(font)
-            love.graphics.setColor(1, 1, 1, 1)
-            love.graphics.printf("Super", ability.x - abR/2, ability.y - 16 * scale, abR * 2, "center")
-        end
+        love.graphics.setFont(font)
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.printf("Super", ability.x - abR/2, ability.y - 16 * scale, abR * 2, "center")
     end
 
-    -- Кнопка Back (общая для всех)
+    -- Кнопка Back
     love.graphics.setColor(0, 0, 0, 0.5)
     love.graphics.rectangle("fill", back.x + 4*scale, back.y + 5*scale, back.w, back.h, 14*scale, 14*scale)
     love.graphics.setColor(0.35, 0.15, 0.75, 1)
