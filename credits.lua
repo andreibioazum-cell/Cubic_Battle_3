@@ -3,14 +3,9 @@ local credits = {}
 local fontTitle, fontText, fontBtn
 local btnBack = { w = 200, h = 60, x = 0, y = 0 }
 
-local isMobile = (love.system.getOS() == "Android" or love.system.getOS() == "iOS")
-
 local function getScale()
     local w, h = love.graphics.getDimensions()
-    local base = 1000        -- для ПК теперь 500
-    if isMobile then
-        base = 600
-    end
+    local base = 600
     return math.min(w, h) / base
 end
 
@@ -50,21 +45,7 @@ function credits.load()
 end
 
 function credits.resize()
-    local scale = getScale()
-
-    btnBack.w = 220 * scale
-    btnBack.h = 65 * scale
-    local w, h = love.graphics.getDimensions()
-    btnBack.x = (w - btnBack.w) / 2
-    btnBack.y = h - 120 * scale
-
-    local titleSize = math.max(36, 56 * scale)
-    local textSize  = math.max(20, 32 * scale)
-    local btnSize   = math.max(22, 34 * scale)
-
-    fontTitle = love.graphics.newFont("Fredoka-Bold.ttf", titleSize)
-    fontText  = love.graphics.newFont("Fredoka-Bold.ttf", textSize)
-    fontBtn   = love.graphics.newFont("Fredoka-Bold.ttf", btnSize)
+    credits.load()
 end
 
 function credits.draw()
@@ -85,13 +66,7 @@ function credits.draw()
     drawSpacedText("Dima Gustenyov – Owner (11 years)", 0, y, w, "center", fontText)
     y = y + 80 * scale
 
-    drawSpacedText("Music:", 0, y, w, "center", fontText)
-    y = y + 55 * scale
-    drawSpacedText('"Sneaky Snitch" by Kevin MacLeod', 0, y, w, "center", fontText)
-    y = y + 45 * scale
-    drawSpacedText("(incompetech.com)", 0, y, w, "center", fontText)
-    y = y + 45 * scale
-    drawSpacedText("Licensed under CC: By Attribution 3.0", 0, y, w, "center", fontText)
+    -- Раздел музыки удалён
 
     love.graphics.setColor(0.1, 0.0, 0.2, 0.5)
     love.graphics.rectangle("fill", btnBack.x + 4*scale, btnBack.y + 5*scale, btnBack.w, btnBack.h, 14*scale, 14*scale)
