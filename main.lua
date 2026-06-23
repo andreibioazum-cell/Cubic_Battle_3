@@ -1,8 +1,6 @@
--- main.lua для Cubic Battle 3
+-- main.lua для Cubic Battle 3 (только мобильная версия, без музыки)
 -- Поддерживает: Lobby, Game, Shop, Credits, Settings
--- Сохранение: монеты, список купленных скинов (ownedSkins), надетый скин, настройки звука
--- Музыка: Sneaky Snitch (Kevin MacLeod)
--- Звук кнопок: cartoon-button-click-sound.mp3
+-- Сохранение: монеты, список купленных скинов, надетый скин, настройки звука
 
 local lobby = require("lobby")
 local game = require("game")
@@ -13,44 +11,14 @@ local settings = require("settings")
 
 GameState = { current = "lobby" }
 
-local isMobile = love.system.getOS() == "Android" or love.system.getOS() == "iOS"
 local lastTap = 0
 local lastState = nil
-local shotCooldown = 0
-local SHOT_DELAY = 0.15
 
--- ========== ЗВУКИ И МУЗЫКА ==========
-local bgMusic = nil
-musicOn = true      -- глобальная переменная (используется в других модулях)
-sfxOn = true        -- глобальная переменная для звуковых эффектов
-
-function toggleMusic()
-    if bgMusic then
-        if bgMusic:isPlaying() then
-            bgMusic:pause()
-            musicOn = false
-        else
-            bgMusic:play()
-            musicOn = true
-        end
-    end
-end
+-- ========== ЗВУКИ ==========
+sfxOn = true
 
 function toggleSfx()
     sfxOn = not sfxOn
-end
-
-local function loadMusic()
-    local ok, source = pcall(love.audio.newSource, "Kevin_MacLeod_-_Sneaky_Snitch_74768437.mp3", "stream")
-    if ok and source then
-        bgMusic = source
-        bgMusic:setLooping(true)
-        bgMusic:setVolume(0.5)
-        if musicOn then bgMusic:play() end
-    else
-        musicOn = false
-        print("Не удалось загрузить музыку")
-    end
 end
 
 function playButtonSound()
@@ -59,22 +27,18 @@ function playButtonSound()
     if sound then
         sound:setVolume(0.5)
         sound:play()
-    else
-        -- print("Звук кнопки не загружен")
     end
 end
 
--- ========== СОХРАНЕНИЕ (новый формат) ==========
-SAVE_DATA = { coins = 0, ownedSkins = {}, equippedSkin = "NONE", musicOn = true, sfxOn = true }
+-- ========== СОХРАНЕНИЕ ==========
+SAVE_DATA = { coins = 0, ownedSkins = {}, equippedSkin = "NONE", sfxOn = true }
 local SAVE_FILE = "data.txt"
 
 function SAVE_SAVE()
-    -- Сохраняем список ownedSkins через запятую
     local ownedStr = table.concat(SAVE_DATA.ownedSkins, ",")
     local content = tostring(SAVE_DATA.coins) .. "\n" ..
                     ownedStr .. "\n" ..
                     SAVE_DATA.equippedSkin .. "\n" ..
-                    tostring(musicOn and 1 or 0) .. "\n" ..
                     tostring(sfxOn and 1 or 0)
     local success, err = pcall(function()
         love.filesystem.write(SAVE_FILE, content)
@@ -91,7 +55,6 @@ local function loadSave()
     if not info then
         print("Нет файла сохранения, используем значения по умолчанию")
         SAVE_DATA = { coins = 0, ownedSkins = {}, equippedSkin = "NONE" }
-        musicOn = true
         sfxOn = true
         return
     end
@@ -100,7 +63,6 @@ local function loadSave()
     if not data then
         print("Ошибка чтения сохранения: " .. tostring(err))
         SAVE_DATA = { coins = 0, ownedSkins = {}, equippedSkin = "NONE" }
-        musicOn = true
         sfxOn = true
         return
     end
@@ -113,10 +75,8 @@ local function loadSave()
     local coins = tonumber(lines[1]) or 0
     local ownedStr = lines[2] or ""
     local equippedSkin = lines[3] or "NONE"
-    local musicVal = tonumber(lines[4]) or 1
-    local sfxVal = tonumber(lines[5]) or 1
+    local sfxVal = tonumber(lines[4]) or 1
 
-    -- Преобразуем строку в список
     local ownedSkins = {}
     if ownedStr ~= "" then
         for name in ownedStr:gmatch("[^,]+") do
@@ -129,7 +89,6 @@ local function loadSave()
         ownedSkins = ownedSkins,
         equippedSkin = equippedSkin
     }
-    musicOn = musicVal == 1
     sfxOn = sfxVal == 1
 
     print("Загружено: coins=" .. coins .. ", owned=" .. ownedStr .. ", equipped=" .. equippedSkin)
@@ -138,15 +97,13 @@ end
 -- ========== LOVE CALLBACKS ==========
 function love.load()
     love.graphics.setDefaultFilter("linear", "linear")
-    loadSave()          -- загружаем настройки и монеты
-    controls.load()     -- загружаем управление
-    loadMusic()         -- загружаем музыку (учитывая musicOn)
+    loadSave()
+    controls.load()
 end
 
 function love.update(dt)
     if dt > 0.05 then dt = 0.05 end
 
-    -- Обработка смены состояния
     if GameState.current ~= lastState then
         print("Переход в состояние: " .. tostring(GameState.current))
         if GameState.current == "lobby" then
@@ -163,21 +120,11 @@ function love.update(dt)
         lastState = GameState.current
     end
 
-    -- Обновление логики в зависимости от состояния
     if GameState.current == "lobby" then
         lobby.update(dt)
     elseif GameState.current == "game" then
         controls.update(dt)
-        if shotCooldown > 0 then
-            shotCooldown = shotCooldown - dt
-        end
-        local shot, dx, dy = controls.getShot()
-        if shot and shotCooldown <= 0 and game.spawnPlayerBullet then
-            game.spawnPlayerBullet(dx, dy)
-            shotCooldown = SHOT_DELAY
-        end
         game.update(dt)
-    -- остальные состояния не требуют обновления
     end
 end
 
@@ -186,7 +133,7 @@ function love.draw()
         lobby.draw()
     elseif GameState.current == "game" then
         game.draw()
-        controls.draw()   -- рисуем элементы управления поверх игры
+        controls.draw()
     elseif GameState.current == "shop" then
         shop.draw(SAVE_DATA.coins)
     elseif GameState.current == "credits" then
@@ -205,31 +152,7 @@ function love.resize(w, h)
     controls.resize()
 end
 
--- ========== КЛАВИАТУРА ==========
-function love.keypressed(key)
-    if GameState.current == "game" then
-        controls.keypressed(key)
-    end
-
-    if key == "escape" then
-        GameState.current = "lobby"
-        playButtonSound()
-    end
-
-    if key == "m" then
-        toggleMusic()
-        SAVE_SAVE()   -- сохраняем состояние музыки
-        playButtonSound()
-    end
-end
-
-function love.keyreleased(key)
-    if GameState.current == "game" then
-        controls.keyreleased(key)
-    end
-end
-
--- ========== ТАЧ / МЫШЬ ==========
+-- ========== ТАЧ ==========
 local function dispatch(fn, id, x, y)
     local s = GameState.current
     if s == "lobby" and lobby[fn] then
@@ -264,7 +187,6 @@ function love.touchpressed(id, x, y)
     if GameState.current == "game" then
         controls.touchpressed(id, x, y)
     end
-
     dispatch("touchpressed", id, x, y)
 end
 
@@ -283,26 +205,4 @@ function love.touchreleased(id, x, y)
         end
     end
     dispatch("touchreleased", id, x, y)
-end
-
--- МЫШЬ для ПК (эмуляция тача)
-function love.mousepressed(x, y, button, istouch)
-    if isMobile or istouch then return end
-    if button == 1 then
-        love.touchpressed(1, x, y)
-    end
-end
-
-function love.mousemoved(x, y)
-    if isMobile then return end
-    if love.mouse.isDown(1) then
-        love.touchmoved(1, x, y)
-    end
-end
-
-function love.mousereleased(x, y, button, istouch)
-    if isMobile or istouch then return end
-    if button == 1 then
-        love.touchreleased(1, x, y)
-    end
 end
