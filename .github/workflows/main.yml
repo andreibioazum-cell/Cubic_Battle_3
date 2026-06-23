@@ -7,14 +7,12 @@ on:
 jobs:
   build-android-release:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     outputs:
       apk-name: ${{ steps.set-output.outputs.apk-name }}
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
 
       - uses: actions/setup-java@v4
         with:
@@ -25,15 +23,10 @@ jobs:
 
       - uses: actions/cache@v4
         with:
-          path: |
-            ${{ env.ANDROID_HOME }}/ndk/25.2.9519653
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ndk-gradle-v6
-          restore-keys: |
-            ndk-gradle-v6
+          path: ${{ env.ANDROID_HOME }}/ndk/25.2.9519653
+          key: ndk-25.2.9519653-v5
 
-      - name: Install NDK (if not cached)
+      - name: Install NDK
         run: |
           if [ ! -d "$ANDROID_HOME/ndk/25.2.9519653" ]; then
             yes | sdkmanager "ndk;25.2.9519653"
@@ -47,50 +40,63 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: love-android
-          key: love-android-src-v6
-          restore-keys: |
-            love-android-src-v6
+          key: love-android-src-v5
 
-      - name: Clone love-android (shallow)
+      - name: Clone love-android
         run: |
           if [ ! -f "love-android/gradlew" ]; then
-            git clone --depth 1 --recursive https://github.com/love2d/love-android.git
+            git clone --recursive --depth 1 https://github.com/love2d/love-android.git
           fi
 
-      - name: Configure app
+      # Меняем пакет на com.CB3
+      - name: Set package name to com.CB3
         run: |
           sed -i 's/applicationId "org.love2d.android"/applicationId "com.CB3"/g' love-android/app/build.gradle
-          sed -i '/abiFilters/d' love-android/app/build.gradle
-          sed -i '/defaultConfig {/a\        ndk { abiFilters "arm64-v8a" }' love-android/app/build.gradle
-          
-          cat >> love-android/gradle.properties << 'EOF'
-          org.gradle.jvmargs=-Xmx4g
-          org.gradle.parallel=true
-          org.gradle.caching=true
-          org.gradle.daemon=false
-          android.enableJetifier=false
-          android.useAndroidX=true
-          EOF
 
-      - name: Package game.love (fast)
+      # Убираем иконку (оставляем стандартную)
+      # Никаких шагов с иконкой нет
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-v5
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            love-android/app/.cxx
+            love-android/app/build
+          key: native-v5
+
+      - name: Package game.love
         run: |
-          zip -9 -r game.love . -x "*.git*" -x ".github/*" -x "love-android/*" -x "*.yml" -x "*.md"
+          zip -9 -r game.love . -x "*.git*" -x ".github/*" -x "love-android/*" -x "*.yml"
 
       - name: Embed game
         run: |
           mkdir -p love-android/app/src/embed/assets
           cp game.love love-android/app/src/embed/assets/game.love
 
-      - name: Fast build (skip tests, only arm64)
-        working-directory: love-android
+      - name: Force arm64
         run: |
-          ./gradlew assembleEmbedNoRecordRelease \
-            --no-daemon \
-            --parallel \
-            --console=plain \
-            -x test \
-            -x lint \
-            -x lintVitalRelease
+          sed -i '/abiFilters/d' love-android/app/build.gradle
+          sed -i '/defaultConfig {/a\        ndk { abiFilters "arm64-v8a" }' love-android/app/build.gradle
+
+      - name: Optimize Gradle
+        run: |
+          cat >> love-android/gradle.properties << 'EOF'
+          org.gradle.jvmargs=-Xmx6g
+          org.gradle.parallel=true
+          org.gradle.caching=true
+          org.gradle.daemon=false
+          EOF
+
+      # Собираем Release (без подписи, но это релизный билд)
+      - name: Build Release APK (unsigned)
+        working-directory: love-android
+        run: ./gradlew assembleEmbedNoRecordRelease --no-daemon --parallel --console=plain
 
       - name: Collect APK
         id: set-output
